@@ -1,0 +1,49 @@
+name: Release bibverse
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  release:
+    name: Build and release
+    runs-on: ubuntu-latest
+    container:
+      image: golang:1.27.3@sha256:f20d83a83e18dbd2a4714b8ffd4b30b287b6243962dd75608e86abcc63ba4efc
+    permissions:
+      contents: write # creates the release
+    steps:
+      - name: Run actions/checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Build binaries
+        run: |
+          mkdir dist
+          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64; do
+            os="${target%/*}"
+            arch="${target#*/}"
+            ext=""
+            if [ "${os}" = "windows" ]; then
+              ext=".exe"
+            fi
+            CGO_ENABLED=0 GOOS="${os}" GOARCH="${arch}" go build -buildvcs=false -trimpath \
+              -ldflags="-s -w" -o "dist/bibverse-${os}-${arch}${ext}" ./cmd/bibverse
+          done
+          cd dist && sha256sum bibverse-* >SHA256SUMS
+      - name: Import the signing key
+        run: echo "${GPG_PRIVATE_KEY}" | gpg --batch --import
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+      - name: Sign the checksums
+        run: |
+          gpg --batch --yes --pinentry-mode loopback \
+            --passphrase "${GPG_PASSPHRASE}" \
+            --detach-sign --armor -o dist/SHA256SUMS.asc dist/SHA256SUMS
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+      - name: Run softprops/action-gh-release
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
+        with:
+          files: dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

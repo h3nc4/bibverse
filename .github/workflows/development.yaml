@@ -1,0 +1,84 @@
+name: bibverse Development CI
+
+on:
+  push:
+    branches:
+      - "main"
+  pull_request:
+    branches:
+      - "main"
+  schedule:
+    - cron: "0 7 * * *" # daily at 07:00 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    name: Format and test
+    runs-on: ubuntu-latest
+    container:
+      image: golang:1.27.3@sha256:f20d83a83e18dbd2a4714b8ffd4b30b287b6243962dd75608e86abcc63ba4efc
+    steps:
+      - name: Run actions/checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Check formatting
+        run: |
+          if [ -n "$(gofmt -l .)" ]; then
+            gofmt -d .
+            exit 1
+          fi
+      - name: Test
+        run: go test -v -race -coverprofile=coverage.out ./...
+      - name: Print the live verse from a static build
+        run: |
+          CGO_ENABLED=0 go build -buildvcs=false -trimpath -ldflags="-s -w" -o bibverse ./cmd/bibverse
+          verse="$(./bibverse)"
+          if [ -z "${verse}" ]; then
+            echo "::error::bibverse printed nothing"
+            exit 1
+          fi
+          echo "${verse}"
+      - name: Run actions/upload-artifact
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: code-coverage
+          path: coverage.out
+          retention-days: 1
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    container:
+      image: golangci/golangci-lint:v2.15@sha256:fbfcfd12a6f8d7f1b97b3362ca80fc2a244d46863148c73cb88e7793af96c481
+    steps:
+      - name: Run actions/checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Run golangci-lint
+        run: golangci-lint run ./...
+        env:
+          GOFLAGS: -buildvcs=false
+
+  sonarqube:
+    name: SonarQube Scan
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run actions/checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - name: Run actions/download-artifact
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: code-coverage
+      - name: Run h3nc4/sonar-action
+        uses: h3nc4/sonar-action@e799384ff5832f1bc2205946e6f342029c3b388c # v1
+        with:
+          host-url: ${{ vars.SONAR_HOST_URL }}
+          token: ${{ secrets.SONAR_TOKEN }}
+          image: h3nc4/dev-base:debian-13@sha256:c78e86da85254b1d6f9278ddec16e0d8f9ebe008101b25182b7f8829df35548a
+          script: /usr/local/bin/sonar
