@@ -4,5 +4,5 @@ go 1.27
 
 require (
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20261115193255-739070949446
-	golang.org/x/net v0.62.0
+	golang.org/x/net v0.63.0
 )
