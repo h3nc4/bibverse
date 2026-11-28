@@ -1,0 +1,20 @@
+.TH BIBVERSE 1 bibverse
+.SH NAME
+bibverse \- print the verse before today's Gospel
+.SH SYNOPSIS
+.B bibverse
+.SH DESCRIPTION
+.B bibverse
+reads the USCCB daily readings feed and prints the acclamation sung before the Gospel at today's Catholic Mass as one line on standard output, followed by its scripture reference.
+Most of the year that is the Alleluia, during Lent and Holy Week the Verse Before the Gospel, and at the Easter Vigil the first stanza of the last Responsorial Psalm.
+.PP
+The feed changes day at 04:30 US Eastern time, so before then it still holds yesterday.
+TLS roots come from the host when it has a bundle, and otherwise from the Mozilla roots compiled into the binary.
+.SH EXIT STATUS
+0 on success, and 1 on failure with the reason on standard error.
+.SH EXAMPLES
+.EX
+bibverse | cowsay
+.EE
+.SH SEE ALSO
+https://github.com/h3nc4/bibverse

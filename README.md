@@ -4,7 +4,25 @@ Prints the verse sung before the Gospel at today's Catholic Mass, read from the 
 
 ## Install
 
-Each tagged release attaches binaries for Linux, macOS and Windows on `amd64` and `arm64`, a `SHA256SUMS` file and its signature. The Linux ones are statically linked, and the macOS and Windows ones link only the libraries of the operating system itself.
+Each tagged release attaches binaries for Linux, macOS and Windows on `amd64` and `arm64`, Debian packages for both, a `SHA256SUMS` file and its signature. The Linux ones are statically linked, and the macOS and Windows ones link only the libraries of the operating system itself.
+
+### Debian and Devuan
+
+The package installs `/usr/bin/bibverse` and its man page, and `apt-get purge bibverse` removes both. `SHA256SUMS` names the package of each release.
+
+```sh
+arch=amd64
+base=https://github.com/h3nc4/bibverse/releases/latest/download
+wget "${base}/SHA256SUMS" "${base}/SHA256SUMS.asc"
+wget -qO- https://h3nc4.com/dreamweaver.asc | gpg --import
+gpg --verify SHA256SUMS.asc SHA256SUMS
+deb="$(grep -o "bibverse_.*_${arch}\.deb" SHA256SUMS)"
+wget "${base}/${deb}"
+sha256sum --ignore-missing -c SHA256SUMS
+sudo apt-get install "./${deb}"
+```
+
+`scripts/deb.sh` builds the same package from a checkout, with Go and `dpkg-deb`, into `dist/`.
 
 ### Linux
 
