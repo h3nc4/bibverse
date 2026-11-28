@@ -14,8 +14,12 @@ jobs:
     permissions:
       contents: write # creates the release
     steps:
+      - name: Let git read the checkout
+        run: git config --system --add safe.directory '*'
       - name: Run actions/checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
       - name: Build binaries
         run: |
           mkdir dist
@@ -29,7 +33,9 @@ jobs:
             CGO_ENABLED=0 GOOS="${os}" GOARCH="${arch}" go build -buildvcs=false -trimpath \
               -ldflags="-s -w" -o "dist/bibverse-${os}-${arch}${ext}" ./cmd/bibverse
           done
-          cd dist && sha256sum bibverse-* >SHA256SUMS
+          ./scripts/deb.sh amd64
+          ./scripts/deb.sh arm64
+          cd dist && sha256sum bibverse-* bibverse_*.deb >SHA256SUMS
       - name: Import the signing key
         run: echo "${GPG_PRIVATE_KEY}" | gpg --batch --import
         env:
